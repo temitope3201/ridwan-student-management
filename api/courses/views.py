@@ -1,4 +1,4 @@
-from ..models import Course, Student, Grade
+from ..models import Course, Student, Grade, Admin
 from flask_restx import Namespace, fields, Resource
 from flask import request, abort
 from http import HTTPStatus
@@ -206,7 +206,9 @@ class StudentGetAddDeleteCourses(Resource):
 
         username = get_jwt_identity()
 
-        if student.username == username:
+        admin = Admin.query.filter_by(username=username).first()
+
+        if student.username == username or admin:
 
             for course in data:
 
@@ -237,21 +239,23 @@ class StudentGetAddDeleteCourses(Resource):
             Get All Courses Registered By A student
         """
         
+
         student = Student.get_by_id(student_id)
 
         username = get_jwt_identity()
+        admin = Admin.query.filter_by(username=username).first()
 
-        if username == student.username:
+        if username == student.username or admin:
 
             student_courses = student.course_list
 
             return student_courses, HTTPStatus.OK
         
         else:
-            abort('You Are Not Authorized To Make Changes To This Student Account', HTTPStatus.FORBIDDEN)
+            abort('You Are Not Authorized To view This Student Account', HTTPStatus.FORBIDDEN)
     
     @course_namespace.doc(
-            description = 'Student Remove Course From Their List',
+            description = 'Student Removes Course From Their List',
             params = {
                 'student_id': 'ID of The Student'
             }
@@ -269,8 +273,9 @@ class StudentGetAddDeleteCourses(Resource):
         student = Student.get_by_id(student_id)
 
         username = get_jwt_identity()
+        admin = Admin.query.filter_by(username=username).first()
 
-        if username == student.username:
+        if username == student.username or admin:
 
             course_to_delete = Course.query.filter_by(course_code = data.get('course')).first()
 
@@ -310,16 +315,17 @@ class GetStudentsInACourse(Resource):
         return students, HTTPStatus.OK
     
 
-@course_namespace.doc(
+
+@course_namespace.route('/<int:course_id>/grade/<int:student_id>')
+class StudentAddUpgradeGetGrade(Resource):
+
+    @course_namespace.doc(
             description = 'Add The Grade For A Student In A COurse',
             params = {
                 'course_id': 'ID of the Course',
                 'student_id': 'ID of The Student'
             }
             )
-@course_namespace.route('/<int:course_id>/grade/<int:student_id>')
-class StudentAddUpgradeGetGrade(Resource):
-
     @jwt_required()
     @admin_required()
     @course_namespace.expect(grade_add_model)
@@ -369,7 +375,7 @@ class StudentAddUpgradeGetGrade(Resource):
     
 
     @course_namespace.doc(
-            description = 'Update A Particula Grade',
+            description = 'Admin Updates A Particular Grade',
             params = {
                 'course_id': 'ID of the Course',
                 'student_id': 'ID of The Student'
@@ -415,8 +421,9 @@ class GetStudentGrades(Resource):
         student = Student.get_by_id(student_id)
         student_name = student.username
         current_user = get_jwt_identity()
+        admin = Admin.query.filter_by(username=current_user).first()
 
-        if current_user == student_name:
+        if current_user == student_name or admin:
     
             grades = Grade.query.filter_by(student_identifier = str(student_id))
             
@@ -457,7 +464,7 @@ class GetCourseGrades(Resource):
     def get(self, course_id):
 
         """ 
-            Get The Grades Obtained In A Course
+            Get All The Grades Obtained In A Course
         """
 
         course = Course.get_by_id(course_id)
@@ -488,8 +495,9 @@ class GetCourseGrades(Resource):
 class GetStudentGPA(Resource):
 
     @course_namespace.doc(
-            description = 'Get The GPA for a registered student',
+            description = 'Add The Grade For A Student In A COurse',
             params = {
+
                 'student_id': 'ID of The Student'
             }
             )
@@ -505,10 +513,11 @@ class GetStudentGPA(Resource):
         grades = Grade.query.filter_by(student_identifier = str(student_id))
 
         current_user = get_jwt_identity()
+        admin = Admin.query.filter_by(username=current_user).first()
 
         grade_weight_list = []
 
-        if student.username == current_user:
+        if student.username == current_user or admin:
 
             for grade in grades:
 
